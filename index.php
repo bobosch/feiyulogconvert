@@ -21,7 +21,7 @@ if(isset($_GET['test'])){
 if($_FILES['file']){
 	if(is_uploaded_file($_FILES['file']['tmp_name'])){
 		$feiyu=new feiyu();
-		$feiyu->setOutputFormat('kml');
+		$feiyu->setOutputFormat($_POST['output']);
 		$feiyu->convert($_FILES['file']['tmp_name']);
 		if($feiyu->errors){
 			echo '<pre>';
@@ -29,7 +29,7 @@ if($_FILES['file']){
 			echo '</pre>';
 		}else{
 			header('Content-Type: application/vnd.google-earth.kml+xml');
-			header('Content-Disposition: attachment; filename="'.pathinfo($_FILES['file']['name'],PATHINFO_FILENAME).'.kml"');
+			header('Content-Disposition: attachment; filename="'.pathinfo($_FILES['file']['name'],PATHINFO_FILENAME).'.'.$feiyu->getOutputFormat().'"');
 			echo $feiyu->output;
 			exit;
 		}
@@ -40,7 +40,7 @@ if($_FILES['file']){
 <html>
 <head>
 	<style>
-		input {display:block;}
+		input[type="file"],input[type="submit"] {display:block;}
 	</style>
 </head>
 
@@ -50,6 +50,8 @@ if($_FILES['file']){
 	<p>Please upload a feiyu log file with gps coordinates. You will receive a kml file with track path and fly animation for google earth.</p>
 	<form action="index.php" enctype="multipart/form-data" method="post">
 		<input name="file" type="file" />
+		<input name="output" type="radio" value="kml" checked="checked" />Google KML File<br />
+		<input name="output" type="radio" value="csv" />CSV File
 		<input type="submit" />
 	</form>
 	<h2>Thanks to</h2>

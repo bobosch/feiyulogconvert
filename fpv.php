@@ -167,8 +167,12 @@ https://developers.google.com/kml/documentation/touring
 		fclose($file);
 	}
 
+	public function getOutputFormat(){
+		return $this->format;
+	}
+
 	public function setOutputFormat($format){
-		$this->format=$format;
+		if(in_array($format,array('csv','kml'))) $this->format=$format;
 	}
 
 	protected function loadFeiyuLog($file){
