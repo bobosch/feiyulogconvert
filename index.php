@@ -57,7 +57,7 @@ if($_FILES['file']){
 	<ul>
 		<li>NorCalMatCat <a href="http://www.rcgroups.com/forums/showthread.php?t=1664005">http://www.rcgroups.com/forums/showthread.php?t=1664005</a></li>
 		<li>Feiyu Tech <a href="The%20Intuduction%20of%20OSD%20recording%20files.pdf">The Intuduction of OSD recording files.pdf</a></li>
-		<li>Open Source <a href="index.php?fpv">My class feiyu</a></li>
+		<li>Open Source <a href="index.php?fpv">My class feiyu</a> also on <a href="http://sourceforge.net/p/feiyulogconvert/code/ci/master/tree/">Sourceforge</a></li>
 	</ul>
 	<p>Feedback to <a href="mailto:fpv@bobosch.de">fpv@bobosch.de</a></p>
 </body>
