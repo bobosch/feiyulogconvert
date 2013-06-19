@@ -132,6 +132,10 @@ https://developers.google.com/kml/documentation/touring
 	public $roll=0;
 	public $yaw=0; // heading
 
+	public $year=0;
+	public $day=0;
+	public $month=0;
+
 	public $hour=0;
 	public $minute=0;
 	public $second=0;
@@ -147,6 +151,8 @@ https://developers.google.com/kml/documentation/touring
 	protected $temp;
 
 	public function convert($filename){
+		date_default_timezone_set('UTC');
+
 		$file=fopen($filename,'r');
 		$f=strtoupper($this->format);
 
@@ -208,6 +214,13 @@ https://developers.google.com/kml/documentation/touring
 		$this->altitude=$this->getValue($d[1][18],$d[1][19],0.1);
 
 		$this->yaw=$this->getValue($d[1][14],$d[1][15],0.01);
+		$this->pitch=$this->getValue($d[3][3],$d[3][4],0.1,true);
+		$this->roll=$this->getValue($d[3][5],$d[3][6],0.1,true);
+
+		$this->month=$this->num($d[2][32],12);
+		$this->day=$this->num($d[2][33],31);
+		$this->year=$this->num($d[2][34],99);
+
 		$this->hour=$this->num($d[2][29],23);
 		$this->minute=$this->num($d[2][30],59);
 		$s=$this->num($d[2][31],59);
@@ -217,9 +230,6 @@ https://developers.google.com/kml/documentation/touring
 			$this->second=$s;
 			$this->millisecond=0;
 		}
-
-		$this->pitch=$this->getValue($d[3][3],$d[3][4],0.1,true);
-		$this->roll=$this->getValue($d[3][5],$d[3][6],0.1,true);
 	}
 
 	function getCoordinate($coord1,$coord2,$coord3,$coord4){
@@ -258,6 +268,7 @@ https://developers.google.com/kml/documentation/touring
 		return min(max(intval($value),$min),$max);
 	}
 
+	// CSV
 	protected function getCSVstart(){
 		return "#DATA1,?,?,?,?,?,Lat1,Lat2,Lat3,Lat4,Long1,Long2,Long3,long4,CutHDG1,CutHDG2,?,?,altitude1,altitude2 ,airspeed1,airspeed2,barualt1,barualt2,tgtdist1,tg tdist2,latost1,latost2,?,?,".
 			"#DATA2,?,?,Waypoint,TgtHDG1,TgtHDG2,TgtAlt1,TgtAlt 2,TgtGS1,TgtGS2,HomeLat1,HomeLat2,HomeLat3,HomeLat 4,HomeLng1,HomeLng2,HomeLng3,HomeLng4,TgtLat1,TgtL at2,TgtLat3,TgtLat4,TgtLng1,TgtLng2,TgtLng3,TgtLng 4,APVlt1,ApVlt2,BattVlt,Hour,Minute,Second,Month,D ay,?,temp,BattCur1,BattCur2,?,?,refresh,?,Downlink Refresh,?,?,".
@@ -270,6 +281,7 @@ https://developers.google.com/kml/documentation/touring
 		return implode(',',$this->data[1]).','.implode(',',$this->data[2]).','.implode(',',$this->data[3]).','.$this->hour.','.$this->minute.','.$this->second.','.$this->millisecond.','.$this->longitude.','.$this->latitude.','.$this->yaw.','.$this->pitch.','.$this->roll."\n";
 	}
 
+	// KML
 	protected function getKMLline(){
 		if($this->longitude){
 // 				$sxe->Document->Folder->Placemark->{'Track'}->addChild('coord',$this->longitude.' '.$this->latitude.' '.$this->altitude);
@@ -278,10 +290,14 @@ https://developers.google.com/kml/documentation/touring
 			$duration=round($time-$this->last,2);
 			$this->last=$time;
 			if($duration>1) $duration=1;
+			$DateWhen=Date(DATE_ATOM,mktime($this->hour,$this->minute,$this->second+$this->millisecond/1000,$this->month,$this->day,2000+$this->year));
+			$this->temp['DateWhen'][]=$DateWhen;
 			$this->temp['cam'][]='
 <gx:FlyTo>
 	<gx:duration>'.$duration.'</gx:duration>
+	<gx:flyToMode>smooth</gx:flyToMode>
 	<Camera>
+		<gx:TimeStamp><when>'.$DateWhen.'</when></gx:TimeStamp>
 		<longitude>'.$this->longitude.'</longitude>
 		<latitude>'.$this->latitude.'</latitude>
 		<altitude>'.$this->altitude.'</altitude>
@@ -325,7 +341,7 @@ https://developers.google.com/kml/documentation/touring
 		<Style id="logStyle">
 			<LineStyle>
 				<color>ff0000ff</color>
-				<width>2</width>
+				<width>3</width>
 				</LineStyle>
 		</Style>
 		<Folder>
@@ -335,6 +351,7 @@ https://developers.google.com/kml/documentation/touring
 				<styleUrl>#logStyle</styleUrl>
 				<gx:Track>
 					<altitudeMode>absolute</altitudeMode>
+					<when>'.implode("</when>\n<when>",$this->temp['DateWhen']).'</when>
 					<gx:coord>'.implode("</gx:coord>\n<gx:coord>",$this->temp['coord']).'</gx:coord>
 				</gx:Track>
 			</Placemark>
@@ -351,6 +368,7 @@ https://developers.google.com/kml/documentation/touring
 ';
 	}
 
+	// ASS
 	protected function getASSstart(){
 		$this->temp=-60*60+0.01;
 		return '[Script Info]
