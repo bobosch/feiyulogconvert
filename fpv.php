@@ -144,25 +144,25 @@ https://developers.google.com/kml/documentation/touring
 	protected $format='kml';
 	protected $interval=100;
 	protected $last;
+	protected $temp;
 
 	public function convert($filename){
 		$file=fopen($filename,'r');
+		$f=strtoupper($this->format);
 
-		if($this->format=='csv') $this->output=$this->getCSVstart();
+		$method='get'.$f.'start';
+		if(method_exists($this,$method)) $this->output=$this->$method();
 
-		while($this->loadFeiyuLog($file)){
-			$this->decodeFeiyuLog();
-			switch($this->format){
-				case 'csv':
-					$this->output.=$this->getCSVline();
-					break;
-				case 'kml':
-					$this->output.=$this->getKMLline($coord,$cam);
-					break;
+		$method='get'.$f.'line';
+		if(method_exists($this,$method)){
+			while($this->loadFeiyuLog($file)){
+				$this->decodeFeiyuLog();
+				$this->output.=$this->$method();
 			}
 		}
 
-		if($this->format=='kml') $this->output=$this->getKMLend($coord,$cam);
+		$method='get'.$f.'end';
+		if(method_exists($this,$method)) $this->output=$this->$method();
 
 		fclose($file);
 	}
@@ -172,7 +172,7 @@ https://developers.google.com/kml/documentation/touring
 	}
 
 	public function setOutputFormat($format){
-		if(in_array($format,array('csv','kml'))) $this->format=$format;
+		if(in_array($format,array('ass','csv','kml'))) $this->format=$format;
 	}
 
 	protected function loadFeiyuLog($file){
@@ -222,6 +222,42 @@ https://developers.google.com/kml/documentation/touring
 		$this->roll=$this->getValue($d[3][5],$d[3][6],0.1,true);
 	}
 
+	function getCoordinate($coord1,$coord2,$coord3,$coord4){
+		$coord1=$this->tinyint($coord1);
+		$coord2=$this->tinyint($coord2);
+		$coord3=$this->tinyint($coord3);
+		$coord4=$this->tinyint($coord4);
+
+		if($coord1>127){
+			$coord1=-($coord1-128);
+			$coord2=-$coord2;
+			$coord3=-$coord3;
+			$coord4=-$coord4;
+		}
+
+		return $coord1*4.26666666666667+$coord2*0.0166666666666667+$coord3*0.000426666666666667+$coord4*0.00000166666666666667;
+	}
+
+	function getValue($a,$b,$f=1,$neg=false){
+		$a=$this->tinyint($a);
+		$b=$this->tinyint($b);
+
+		if($neg && $a>127){
+			$a=-($a-128);
+			$b=-$b;
+		}
+		
+		return ($a*256+$b)*$f;
+	}
+
+	function tinyint($value){
+		return $this->num($value,255,0);
+	}
+
+	function num($value,$max=255,$min=0){
+		return min(max(intval($value),$min),$max);
+	}
+
 	protected function getCSVstart(){
 		return "#DATA1,?,?,?,?,?,Lat1,Lat2,Lat3,Lat4,Long1,Long2,Long3,long4,CutHDG1,CutHDG2,?,?,altitude1,altitude2 ,airspeed1,airspeed2,barualt1,barualt2,tgtdist1,tg tdist2,latost1,latost2,?,?,".
 			"#DATA2,?,?,Waypoint,TgtHDG1,TgtHDG2,TgtAlt1,TgtAlt 2,TgtGS1,TgtGS2,HomeLat1,HomeLat2,HomeLat3,HomeLat 4,HomeLng1,HomeLng2,HomeLng3,HomeLng4,TgtLat1,TgtL at2,TgtLat3,TgtLat4,TgtLng1,TgtLng2,TgtLng3,TgtLng 4,APVlt1,ApVlt2,BattVlt,Hour,Minute,Second,Month,D ay,?,temp,BattCur1,BattCur2,?,?,refresh,?,Downlink Refresh,?,?,".
@@ -234,15 +270,15 @@ https://developers.google.com/kml/documentation/touring
 		return implode(',',$this->data[1]).','.implode(',',$this->data[2]).','.implode(',',$this->data[3]).','.$this->hour.','.$this->minute.','.$this->second.','.$this->millisecond.','.$this->longitude.','.$this->latitude.','.$this->yaw.','.$this->pitch.','.$this->roll."\n";
 	}
 
-	protected function getKMLline(&$coord,&$cam){
+	protected function getKMLline(){
 		if($this->longitude){
 // 				$sxe->Document->Folder->Placemark->{'Track'}->addChild('coord',$this->longitude.' '.$this->latitude.' '.$this->altitude);
-			$coord[]=$this->longitude.' '.$this->latitude.' '.$this->altitude;
+			$this->temp['coord'][]=$this->longitude.' '.$this->latitude.' '.$this->altitude;
 			$time=$this->hour*24+$this->minute*60+$this->second+$this->millisecond/1000;
 			$duration=round($time-$this->last,2);
 			$this->last=$time;
 			if($duration>1) $duration=1;
-			$cam[]='
+			$this->temp['cam'][]='
 <gx:FlyTo>
 	<gx:duration>'.$duration.'</gx:duration>
 	<Camera>
@@ -259,7 +295,7 @@ https://developers.google.com/kml/documentation/touring
 		}
 	}
 
-	protected function getKMLend($coord,$cam){
+	protected function getKMLend(){
 /*		$sxe = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
 	<Document>
@@ -299,7 +335,7 @@ https://developers.google.com/kml/documentation/touring
 				<styleUrl>#logStyle</styleUrl>
 				<gx:Track>
 					<altitudeMode>absolute</altitudeMode>
-					<gx:coord>'.implode("</gx:coord>\n<gx:coord>",$coord).'</gx:coord>
+					<gx:coord>'.implode("</gx:coord>\n<gx:coord>",$this->temp['coord']).'</gx:coord>
 				</gx:Track>
 			</Placemark>
 		</Folder>
@@ -307,7 +343,7 @@ https://developers.google.com/kml/documentation/touring
 		<gx:Tour>
 			<name>Simulate flight!</name>
 			<gx:Playlist>
-				'.implode('',$cam).'
+				'.implode('',$this->temp['cam']).'
 			</gx:Playlist>
 		</gx:Tour>
 	</Document>
@@ -315,40 +351,38 @@ https://developers.google.com/kml/documentation/touring
 ';
 	}
 
-	function getCoordinate($coord1,$coord2,$coord3,$coord4){
-		$coord1=$this->tinyint($coord1);
-		$coord2=$this->tinyint($coord2);
-		$coord3=$this->tinyint($coord3);
-		$coord4=$this->tinyint($coord4);
+	protected function getASSstart(){
+		$this->temp=-60*60+0.01;
+		return '[Script Info]
+; Script generated by feiyulogconvert
+; http://bobosch.dyndns.org/fpv/index.php
+Title: OSD
+ScriptType: v4.00+
+Collisions: Normal
+PlayResY: 600
+PlayDepth: 0
+Timer: 0,1000
+Video Aspect Ratio: 0
+Video Zoom: 6
+Video Position: 0
+ 
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: DefaultVCD, Arial,28,&H00B4FCFC,&H00B4FCFC,&H00000008,&H80000008,-1,0,0,0,100,100,0.00,0.00,1,1.00,2.00,2,30,30,30,0
 
-		if($coord1>127){
-			$coord1=-($coord1-128);
-			$coord2=-$coord2;
-			$coord3=-$coord3;
-			$coord4=-$coord4;
-		}
-
-		return $coord1*4.26666666666667+$coord2*0.0166666666666667+$coord3*0.000426666666666667+$coord4*0.00000166666666666667;
+[Events]
+Format: Layer, Start, End, Style, Text
+';
 	}
 
-	function getValue($a,$b,$f=1,$neg=false){
-		$a=$this->tinyint($a);
-		$b=$this->tinyint($b);
-
-		if($neg && $a>127){
-			$a=-($a-128);
-			$b=-$b;
-		}
-		
-		return ($a*256+$b)*$f;
-	}
-
-	function tinyint($value){
-		return $this->num($value,255,0);
-	}
-
-	function num($value,$max=255,$min=0){
-		return min(max(intval($value),$min),$max);
+	protected function getASSline(){
+// 		$t=sprintf('%d:%02d:%02d.%02d',$this->hour,$this->minute,$this->second,$this->millisecond/10);
+		$floor=floor($this->temp);
+		$t1=date('H:i:s',$floor).sprintf('.%02d',($this->temp-$floor)*100);
+		$this->temp+=$this->interval/1000;
+		$floor=floor($this->temp);
+		$t2=date('H:i:s',$floor).sprintf('.%02d',($this->temp-$floor)*100);
+		return 'Dialogue: 0,'.$t1.','.$t2.',DefaultVCD, '.$this->yaw."\n";
 	}
 }
 ?>

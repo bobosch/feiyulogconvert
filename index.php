@@ -11,10 +11,9 @@ if(isset($_GET['test'])){
 	$name='06131902';
 // 	$name='airsig';
 	$feiyu=new feiyu();
-	$feiyu->setOutputFormat('csv');
-// 	$feiyu->setOutputFormat('kml');
+	$feiyu->setOutputFormat('ass');
 	$feiyu->convert($name.'.txt');
-	file_put_contents($name.'.csv',$feiyu->output);
+	file_put_contents($name.'.ass',$feiyu->output);
 	exit;
 }
 
